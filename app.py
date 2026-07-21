@@ -1,6 +1,6 @@
 import streamlit as st
 import yfinance as yf
-
+import time
 
 def hesapla_dcf(fcf_baslangic, buyume_orani, iskonto_orani, kalici_buyume_orani, hisse_adedi, yil=5):
     guncel_fcf = fcf_baslangic
@@ -24,23 +24,34 @@ def hesapla_carpan_fd_favok(ebitda, sektor_fd_favok, toplam_borc, toplam_nakit, 
     return hedef_ozkaynak / hisse_adedi
 
 
+# Fonksiyonun hemen üstüne bu dekoratörü ekliyoruz. 
+# ttl=3600 parametresi, veriyi 1 saat (3600 saniye) boyunca hafızada tutar.
+@st.cache_data(ttl=3600) 
 def rakip_carpanlarini_bul(rakip_kodlari_str):
     rakipler = [x.strip() for x in rakip_kodlari_str.split(",") if x.strip()]
     fk_listesi = []
     fd_favok_listesi = []
-
+    
     for rakip in rakipler:
         try:
             info = yf.Ticker(rakip).info
             fk = info.get("trailingPE") or info.get("forwardPE")
             if fk and fk > 0:
                 fk_listesi.append(fk)
-
+                
             fd_favok = info.get("enterpriseToEbitda")
             if fd_favok and fd_favok > 0:
                 fd_favok_listesi.append(fd_favok)
+            
+            # Her API isteğinden sonra sistemi 1 saniye uyutarak spam filtresine takılmayı önleriz
+            time.sleep(1) 
         except:
             continue
+            
+    ortalama_fk = sum(fk_listesi) / len(fk_listesi) if fk_listesi else None
+    ortalama_fd_favok = sum(fd_favok_listesi) / len(fd_favok_listesi) if fd_favok_listesi else None
+    
+    return ortalama_fk, ortalama_fd_favok
 
     ortalama_fk = sum(fk_listesi) / len(fk_listesi) if fk_listesi else None
     ortalama_fd_favok = sum(fd_favok_listesi) / len(fd_favok_listesi) if fd_favok_listesi else None
